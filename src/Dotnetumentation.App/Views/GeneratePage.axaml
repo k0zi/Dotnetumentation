@@ -1,0 +1,90 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rice="clr-namespace:KD.Avalonia.Rice.Controls;assembly=KD.Avalonia.Rice"
+             xmlns:mi="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:icons="clr-namespace:Material.Icons;assembly=Material.Icons"
+             xmlns:vm="clr-namespace:Dotnetumentation.App.ViewModels"
+             x:Class="Dotnetumentation.App.Views.GeneratePage"
+             x:DataType="vm:GenerateViewModel">
+  <DockPanel Margin="24,16,24,16">
+    <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="0,0,0,12">
+      <TextBlock FontSize="24" FontWeight="SemiBold" Text="Generate documentation" />
+      <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource RiceForegroundMutedBrush}"
+                 Text="Every C# project of the solution is analyzed with Roslyn; the PlantUML diagrams are written to a folder next to each project file." />
+    </StackPanel>
+
+    <rice:RiceCard DockPanel.Dock="Top" Header="Solution" Icon="{x:Static icons:MaterialIconKind.FileCodeOutline}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Click="OnBrowseClicked" ToolTip.Tip="Choose a .sln, .slnx or .csproj file">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16" />
+            <TextBlock Text="Browse…" />
+          </StackPanel>
+        </Button>
+        <TextBox Text="{Binding InputPath}" PlaceholderText="/path/to/MySolution.slnx" />
+      </DockPanel>
+    </rice:RiceCard>
+
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,16,*" Margin="0,16,0,0">
+      <rice:RiceGroupBox Header="Diagrams" Icon="{x:Static icons:MaterialIconKind.ShapeOutline}">
+        <StackPanel Spacing="4">
+          <CheckBox IsChecked="{Binding ClassDiagrams}" Content="Class diagrams (one per namespace)" />
+          <CheckBox IsChecked="{Binding ComponentDiagrams}" Content="Component and namespace diagrams" />
+          <CheckBox IsChecked="{Binding SequenceDiagrams}" Content="Sequence diagrams (one per method)" />
+          <CheckBox IsChecked="{Binding ActivityDiagrams}" Content="Activity diagrams (one per method)" />
+        </StackPanel>
+      </rice:RiceGroupBox>
+      <rice:RiceGroupBox Grid.Column="2" Header="Options" Icon="{x:Static icons:MaterialIconKind.Tune}">
+        <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto">
+          <TextBlock VerticalAlignment="Center" Text="Least visibility" />
+          <ComboBox Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding Visibilities}"
+                    SelectedItem="{Binding MinVisibility}" />
+          <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Sequence call depth" />
+          <NumericUpDown Grid.Row="2" Grid.Column="2" Minimum="0" Maximum="100" Increment="1" FormatString="0"
+                         Value="{Binding SequenceDepth}" IsEnabled="{Binding !FollowAllCalls}" />
+          <CheckBox Grid.Row="4" Grid.Column="2" IsChecked="{Binding FollowAllCalls}"
+                    Content="Follow calls to the end of the own code"
+                    ToolTip.Tip="Calls into .NET and other libraries are shown, but not followed." />
+          <TextBlock Grid.Row="6" VerticalAlignment="Center" Text="Max. messages / diagram" />
+          <NumericUpDown Grid.Row="6" Grid.Column="2" Minimum="0" Maximum="100000" Increment="100" FormatString="0"
+                         Value="{Binding MaxSequenceMessages}" ToolTip.Tip="A sequence diagram is cut after this many messages; 0 means no limit." />
+          <TextBlock Grid.Row="8" VerticalAlignment="Center" Text="Include projects" />
+          <TextBox Grid.Row="8" Grid.Column="2" Text="{Binding Include}" PlaceholderText="all (e.g. MyApp.*, Core)" />
+          <TextBlock Grid.Row="10" VerticalAlignment="Center" Text="Exclude projects" />
+          <TextBox Grid.Row="10" Grid.Column="2" Text="{Binding Exclude}" PlaceholderText="none (e.g. *.Tests)" />
+          <TextBlock Grid.Row="12" VerticalAlignment="Center" Text="Output folder" />
+          <TextBox Grid.Row="12" Grid.Column="2" Text="{Binding OutputDirectoryName}" />
+          <CheckBox Grid.Row="14" Grid.Column="2" IsChecked="{Binding Clean}" Content="Delete the output folders first" />
+        </Grid>
+      </rice:RiceGroupBox>
+    </Grid>
+
+    <DockPanel DockPanel.Dock="Top" Margin="0,16,0,8">
+      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="8">
+        <Button Classes="accent" Command="{Binding GenerateCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <rice:RiceSpinner IsActive="{Binding IsRunning}" />
+            <TextBlock Text="Generate" />
+          </StackPanel>
+        </Button>
+        <Button Command="{Binding GenerateCancelCommand}" IsVisible="{Binding IsRunning}" Content="Cancel" />
+      </StackPanel>
+      <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
+    </DockPanel>
+
+    <rice:RiceProgressBar DockPanel.Dock="Top" Margin="0,0,0,8" Value="{Binding Progress}"
+                          IsIndeterminate="{Binding IsProgressIndeterminate}" IsVisible="{Binding IsRunning}" />
+
+    <Border CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource RiceBorderBrush}"
+            Background="{DynamicResource RiceSurfaceBrush}">
+      <ListBox Name="LogList" ItemsSource="{Binding Log}" Background="Transparent">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="x:String">
+            <TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap"
+                       FontFamily="Cascadia Mono, Consolas, DejaVu Sans Mono, Liberation Mono, Noto Sans Mono, monospace" />
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+  </DockPanel>
+</UserControl>

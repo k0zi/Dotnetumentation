@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Dotnetumentation.App/Dotnetumentation.App.csproj" />
+    <Project Path="src/Dotnetumentation.Cli/Dotnetumentation.Cli.csproj" />
+    <Project Path="src/Dotnetumentation.Core/Dotnetumentation.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Dotnetumentation.Core.Tests/Dotnetumentation.Core.Tests.csproj" />
+  </Folder>
+</Solution>

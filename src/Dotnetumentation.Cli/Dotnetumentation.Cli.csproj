@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>dotnetumentation</AssemblyName>
+    <RootNamespace>Dotnetumentation.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>dotnetumentation</ToolCommandName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Dotnetumentation.Core\Dotnetumentation.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:uml="clr-namespace:KD.Avalonia.Rice.Controls.Uml;assembly=KD.Avalonia.Rice"
+             xmlns:md="clr-namespace:KD.Avalonia.Rice.Controls.Markdowns;assembly=KD.Avalonia.Rice"
+             xmlns:mi="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="clr-namespace:Dotnetumentation.App.ViewModels"
+             x:Class="Dotnetumentation.App.Views.BrowsePage"
+             x:DataType="vm:BrowseViewModel">
+  <DockPanel>
+    <DockPanel DockPanel.Dock="Top" Margin="24,16,24,12">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <ToggleButton Name="SourceToggle" ToolTip.Tip="Show the PlantUML / Markdown source" IsVisible="{Binding !ShowsNothing}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <mi:MaterialIcon Kind="CodeTags" Width="16" Height="16" />
+            <TextBlock Text="Source" />
+          </StackPanel>
+        </ToggleButton>
+        <Button Click="OnOpenFolderClicked" ToolTip.Tip="Choose a folder with generated documentation">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <mi:MaterialIcon Kind="FolderOpenOutline" Width="16" Height="16" />
+            <TextBlock Text="Open folder" />
+          </StackPanel>
+        </Button>
+        <Button Command="{Binding RefreshCommand}" ToolTip.Tip="Read the documentation folders again">
+          <mi:MaterialIcon Kind="Refresh" Width="16" Height="16" />
+        </Button>
+      </StackPanel>
+      <StackPanel Spacing="2">
+        <TextBlock FontSize="24" FontWeight="SemiBold" Text="Browse documentation" />
+        <TextBlock Foreground="{DynamicResource RiceForegroundMutedBrush}" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+    </DockPanel>
+
+    <TextBlock Name="StatusText" DockPanel.Dock="Bottom" Margin="24,6,24,10" FontSize="12"
+               Foreground="{DynamicResource RiceForegroundMutedBrush}" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
+
+    <Grid ColumnDefinitions="320,8,*" Margin="24,0">
+      <DockPanel>
+        <TextBox DockPanel.Dock="Top" Margin="0,0,0,8" Text="{Binding Filter}" PlaceholderText="Filter files…" />
+        <Border CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource RiceBorderBrush}"
+                Background="{DynamicResource RiceSurfaceBrush}">
+          <TreeView ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedNode}">
+            <TreeView.ItemTemplate>
+              <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="vm:DocNode">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <mi:MaterialIcon Width="16" Height="16" Kind="FolderOutline" IsVisible="{Binding !IsFile}" />
+                  <mi:MaterialIcon Width="16" Height="16" Kind="SitemapOutline" IsVisible="{Binding IsDiagram}" />
+                  <mi:MaterialIcon Width="16" Height="16" Kind="LanguageMarkdownOutline" IsVisible="{Binding IsMarkdown}" />
+                  <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </TreeDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+        </Border>
+      </DockPanel>
+
+      <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns" />
+
+      <Border Grid.Column="2" CornerRadius="8" BorderThickness="1" ClipToBounds="True"
+              BorderBrush="{DynamicResource RiceBorderBrush}">
+        <Panel>
+          <uml:UmlDiagramView Name="DiagramView" CornerRadius="8" Source="{Binding DiagramSource}"
+                              IsVisible="{Binding ShowsDiagram}" />
+          <md:MarkdownView Name="MarkdownView" Markdown="{Binding Markdown}" BaseUri="{Binding MarkdownBaseUri}"
+                           IsVisible="{Binding ShowsMarkdown}" />
+          <TextBox Name="SourceBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" FontSize="12"
+                   FontFamily="Cascadia Mono, Consolas, DejaVu Sans Mono, Liberation Mono, Noto Sans Mono, monospace"
+                   VerticalContentAlignment="Top" IsVisible="False"
+                   ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+          <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowsNothing}"
+                     Foreground="{DynamicResource RiceForegroundMutedBrush}"
+                     Text="Select a diagram or an overview in the tree." />
+        </Panel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

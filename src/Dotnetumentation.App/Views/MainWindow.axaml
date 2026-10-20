@@ -1,0 +1,21 @@
+<rice:RiceWindow xmlns="https://github.com/avaloniaui"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:rice="clr-namespace:KD.Avalonia.Rice.Controls;assembly=KD.Avalonia.Rice"
+                 xmlns:icons="clr-namespace:Material.Icons;assembly=Material.Icons"
+                 x:Class="Dotnetumentation.App.Views.MainWindow"
+                 Width="1280" Height="800" MinWidth="800" MinHeight="500"
+                 WindowStartupLocation="CenterScreen"
+                 ShowThemeSettingsButton="True" ShowAboutButton="True">
+  <DockPanel>
+    <rice:RiceSideMenu Name="SideMenu" DockPanel.Dock="Left">
+      <rice:RiceSideMenu.Header>
+        <TextBlock FontWeight="SemiBold" Text="Dotnetumentation" TextTrimming="CharacterEllipsis" />
+      </rice:RiceSideMenu.Header>
+      <rice:RiceSideMenuItem Name="GenerateItem" Icon="{x:Static icons:MaterialIconKind.PlayCircleOutline}" Header="Generate"
+                             IsSelected="True" />
+      <rice:RiceSideMenuItem Name="BrowseItem" Icon="{x:Static icons:MaterialIconKind.SitemapOutline}" Header="Browse" />
+    </rice:RiceSideMenu>
+
+    <ContentControl Name="PageHost" />
+  </DockPanel>
+</rice:RiceWindow>

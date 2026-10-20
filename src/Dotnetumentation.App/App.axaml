@@ -1,0 +1,9 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rice="clr-namespace:KD.Avalonia.Rice;assembly=KD.Avalonia.Rice"
+             x:Class="Dotnetumentation.App.App"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <rice:RiceStyles />
+  </Application.Styles>
+</Application>
