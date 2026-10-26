@@ -48,6 +48,7 @@ internal sealed class TypeAnalyzer(Compilation compilation, Visibility minVisibi
     private TypeModel CreateType(INamedTypeSymbol type) => new()
     {
         Id = Symbols.TypeId(type),
+        SymbolId = type.GetDocumentationCommentId(),
         Name = type.ToDisplayString(Symbols.TypeNameFormat),
         Namespace = Symbols.NamespaceName(type),
         Kind = Symbols.KindOf(type),
@@ -56,6 +57,8 @@ internal sealed class TypeAnalyzer(Compilation compilation, Visibility minVisibi
         IsStatic = type.IsStatic,
         IsSealed = type.IsSealed && type.TypeKind == Microsoft.CodeAnalysis.TypeKind.Class,
         Summary = Symbols.Summary(type),
+        Documentation = XmlDocumentation.Read(type),
+        Declaration = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
         SourceFile = type.Locations.FirstOrDefault(l => l.IsInSource)?.SourceTree?.FilePath,
         Members = Members(type),
         Relations = Relations(type),
@@ -67,7 +70,7 @@ internal sealed class TypeAnalyzer(Compilation compilation, Visibility minVisibi
         if (type.TypeKind == Microsoft.CodeAnalysis.TypeKind.Enum)
         {
             foreach (var field in type.GetMembers().OfType<IFieldSymbol>().Where(f => f.HasConstantValue))
-                members.Add(new MemberModel { Kind = MemberKind.EnumValue, Name = field.Name, Signature = field.Name, Visibility = Visibility.Public });
+                members.Add(new MemberModel { Kind = MemberKind.EnumValue, Name = field.Name, Signature = field.Name, Visibility = Visibility.Public, Documentation = XmlDocumentation.Read(field), Declaration = field.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat), SymbolId = field.GetDocumentationCommentId() });
             return members;
         }
         if (type.TypeKind == Microsoft.CodeAnalysis.TypeKind.Delegate)
@@ -109,7 +112,12 @@ internal sealed class TypeAnalyzer(Compilation compilation, Visibility minVisibi
                 _ => null,
             };
             if (model is not null)
-                members.Add(model);
+                members.Add(model with
+                {
+                    Documentation = XmlDocumentation.Read(member),
+                    Declaration = member.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                    SymbolId = member.GetDocumentationCommentId(),
+                });
         }
         return members.OrderBy(m => m.Kind).ToList();
     }
@@ -141,6 +149,9 @@ internal sealed class TypeAnalyzer(Compilation compilation, Visibility minVisibi
             IsStatic = method.IsStatic,
             IsAbstract = method.IsAbstract && method.ContainingType.TypeKind != Microsoft.CodeAnalysis.TypeKind.Interface,
             Id = MethodId(method),
+            SymbolId = method.GetDocumentationCommentId(),
+            Documentation = XmlDocumentation.Read(method),
+            Declaration = method.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
         };
     }
 

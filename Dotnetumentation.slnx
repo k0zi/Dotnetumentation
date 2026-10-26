@@ -5,6 +5,7 @@
     <Project Path="src/Dotnetumentation.Core/Dotnetumentation.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Dotnetumentation.App.Tests/Dotnetumentation.App.Tests.csproj" />
     <Project Path="tests/Dotnetumentation.Core.Tests/Dotnetumentation.Core.Tests.csproj" />
   </Folder>
 </Solution>

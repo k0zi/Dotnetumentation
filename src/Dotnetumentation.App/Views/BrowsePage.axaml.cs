@@ -17,13 +17,11 @@ public partial class BrowsePage : UserControl
         InitializeComponent();
         SourceToggle.IsCheckedChanged += (_, _) => UpdateSource();
 
-        // Links of the overview to diagrams open in the diagram view instead of the browser.
+        // Keep reference pages and UML links in the documentation browser.
         MarkdownView.LinkClicked += (_, e) =>
         {
-            if (_viewModel is null || e.Uri is not { IsFile: true } uri)
-                return;
-            _viewModel.Open(uri.LocalPath);
-            e.Handled = true;
+            if (_viewModel is not null && e.Uri is { } uri && _viewModel.OpenLink(uri))
+                e.Handled = true;
         };
     }
 

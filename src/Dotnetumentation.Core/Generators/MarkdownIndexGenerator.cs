@@ -1,4 +1,5 @@
 using System.Text;
+using Dotnetumentation.Core.Graph;
 using Dotnetumentation.Core.Model;
 using TypeKind = Dotnetumentation.Core.Model.TypeKind;
 
@@ -21,6 +22,13 @@ public sealed class MarkdownIndexGenerator : IDiagramGenerator
             md.Append($"- Target framework: `{project.TargetFramework}`\n");
         md.Append($"- Types: {project.Types.Count}, namespaces: {project.Namespaces.Count()}\n\n");
 
+        md.Append("## Reference documentation\n\n");
+        md.Append($"- [Project and type dependencies]({DocumentationPaths.Dependencies})\n");
+        md.Append($"- [Missing documentation summaries]({DocumentationPaths.Coverage})\n");
+        if (context.Graph is not null)
+            md.Append($"- [Graph database of classes, functions and calls]({DocumentationPaths.Graph}) (`{GraphDatabase.FileName}`)\n");
+        md.Append('\n');
+
         if (context.Diagrams.HasFlag(DiagramKinds.Component))
         {
             md.Append("## Components\n\n");
@@ -41,12 +49,15 @@ public sealed class MarkdownIndexGenerator : IDiagramGenerator
             foreach (var type in group)
                 md.Append($"| `{Cell(type.Name)}` | {Kind(type)} | {Cell(type.Summary ?? "")} |\n");
             md.Append('\n');
+            foreach (var type in group.OrderBy(t => t.Id, StringComparer.Ordinal))
+                md.Append($"- [API: {Cell(type.Name)}]({DocumentationPaths.TypeReference(type.Id)})\n");
+            md.Append('\n');
         }
 
         AppendMethodLinks(md, "Sequence diagrams",
-            context.Sequences.Select(s => (s.Namespace, s.TypeName, s.MethodId, DocumentationPaths.Sequence(s.TypeName, s.Namespace, s.MethodId))));
+            context.SequenceLinks.Select(s => (s.Namespace, s.TypeName, s.MethodId, DocumentationPaths.Sequence(s.TypeName, s.Namespace, s.MethodId))));
         AppendMethodLinks(md, "Activity diagrams",
-            context.Activities.Select(a => (a.Namespace, a.TypeName, a.MethodId, DocumentationPaths.Activity(a.TypeName, a.Namespace, a.MethodId))));
+            context.ActivityLinks.Select(a => (a.Namespace, a.TypeName, a.MethodId, DocumentationPaths.Activity(a.TypeName, a.Namespace, a.MethodId))));
 
         yield return new GeneratedFile(DocumentationPaths.Index, md.ToString());
     }

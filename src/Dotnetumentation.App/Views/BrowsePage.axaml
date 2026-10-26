@@ -4,6 +4,7 @@
              xmlns:md="clr-namespace:KD.Avalonia.Rice.Controls.Markdowns;assembly=KD.Avalonia.Rice"
              xmlns:mi="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="clr-namespace:Dotnetumentation.App.ViewModels"
+             xmlns:graph="clr-namespace:Dotnetumentation.Core.Graph;assembly=Dotnetumentation.Core"
              x:Class="Dotnetumentation.App.Views.BrowsePage"
              x:DataType="vm:BrowseViewModel">
   <DockPanel>
@@ -35,24 +36,53 @@
                Foreground="{DynamicResource RiceForegroundMutedBrush}" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
 
     <Grid ColumnDefinitions="320,8,*" Margin="24,0">
-      <DockPanel>
-        <TextBox DockPanel.Dock="Top" Margin="0,0,0,8" Text="{Binding Filter}" PlaceholderText="Filter files…" />
-        <Border CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource RiceBorderBrush}"
-                Background="{DynamicResource RiceSurfaceBrush}">
-          <TreeView ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedNode}">
-            <TreeView.ItemTemplate>
-              <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="vm:DocNode">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <mi:MaterialIcon Width="16" Height="16" Kind="FolderOutline" IsVisible="{Binding !IsFile}" />
-                  <mi:MaterialIcon Width="16" Height="16" Kind="SitemapOutline" IsVisible="{Binding IsDiagram}" />
-                  <mi:MaterialIcon Width="16" Height="16" Kind="LanguageMarkdownOutline" IsVisible="{Binding IsMarkdown}" />
-                  <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-              </TreeDataTemplate>
-            </TreeView.ItemTemplate>
-          </TreeView>
-        </Border>
-      </DockPanel>
+      <TabControl Padding="0,8,0,0">
+        <TabItem Header="Files">
+          <DockPanel>
+            <TextBox DockPanel.Dock="Top" Margin="0,0,0,8" Text="{Binding Filter}" PlaceholderText="Filter documentation…" />
+            <Border CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource RiceBorderBrush}"
+                    Background="{DynamicResource RiceSurfaceBrush}">
+              <TreeView ItemsSource="{Binding Nodes}" SelectedItem="{Binding SelectedNode}">
+                <TreeView.ItemTemplate>
+                  <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="vm:DocNode">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <mi:MaterialIcon Width="16" Height="16" Kind="FolderOutline" IsVisible="{Binding !IsFile}" />
+                      <mi:MaterialIcon Width="16" Height="16" Kind="SitemapOutline" IsVisible="{Binding IsDiagram}" />
+                      <mi:MaterialIcon Width="16" Height="16" Kind="LanguageMarkdownOutline" IsVisible="{Binding IsMarkdown}" />
+                      <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+              </TreeView>
+            </Border>
+          </DockPanel>
+        </TabItem>
+        <TabItem Header="Symbols" IsEnabled="{Binding HasGraph}"
+                 ToolTip.Tip="Search the classes and functions in the graph database (graph.db) of the documentation">
+          <DockPanel>
+            <TextBox DockPanel.Dock="Top" Margin="0,0,0,8" Text="{Binding SymbolQuery}"
+                     PlaceholderText="Search classes and functions…" />
+            <Border CornerRadius="8" BorderThickness="1" BorderBrush="{DynamicResource RiceBorderBrush}"
+                    Background="{DynamicResource RiceSurfaceBrush}">
+              <ListBox ItemsSource="{Binding Symbols}" SelectedItem="{Binding SelectedSymbol}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="graph:GraphNode">
+                    <StackPanel ToolTip.Tip="{Binding FullName}">
+                      <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Margin="8,0,0,0" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource RiceForegroundMutedBrush}" Text="{Binding Kind}" />
+                        <TextBlock FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                      </DockPanel>
+                      <TextBlock FontSize="11" Foreground="{DynamicResource RiceForegroundMutedBrush}"
+                                 Text="{Binding FullName}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Border>
+          </DockPanel>
+        </TabItem>
+      </TabControl>
 
       <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns" />
 
@@ -69,7 +99,7 @@
                    ScrollViewer.HorizontalScrollBarVisibility="Auto" />
           <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding ShowsNothing}"
                      Foreground="{DynamicResource RiceForegroundMutedBrush}"
-                     Text="Select a diagram or an overview in the tree." />
+                     Text="Select a documentation page or UML diagram in the tree." />
         </Panel>
       </Border>
     </Grid>

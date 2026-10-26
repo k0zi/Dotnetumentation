@@ -22,6 +22,8 @@ public sealed class AppSettings
     public string Include { get; set; } = "";
     public string Exclude { get; set; } = "";
     public string OutputDirectoryName { get; set; } = GeneratorOptions.DefaultOutputDirectoryName;
+    public bool Incremental { get; set; }
+    public bool Graph { get; set; } = true;
 
     public static AppSettings Load()
     {

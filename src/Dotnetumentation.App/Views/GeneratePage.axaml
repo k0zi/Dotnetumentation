@@ -32,10 +32,12 @@
           <CheckBox IsChecked="{Binding ComponentDiagrams}" Content="Component and namespace diagrams" />
           <CheckBox IsChecked="{Binding SequenceDiagrams}" Content="Sequence diagrams (one per method)" />
           <CheckBox IsChecked="{Binding ActivityDiagrams}" Content="Activity diagrams (one per method)" />
+          <CheckBox IsChecked="{Binding Graph}" Content="Graph database of classes, functions and calls (graph.db)"
+                    ToolTip.Tip="An SQLite database per project and one for the solution; searchable in Browse › Symbols." />
         </StackPanel>
       </rice:RiceGroupBox>
       <rice:RiceGroupBox Grid.Column="2" Header="Options" Icon="{x:Static icons:MaterialIconKind.Tune}">
-        <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto">
+        <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto,6,Auto">
           <TextBlock VerticalAlignment="Center" Text="Least visibility" />
           <ComboBox Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding Visibilities}"
                     SelectedItem="{Binding MinVisibility}" />
@@ -55,6 +57,9 @@
           <TextBlock Grid.Row="12" VerticalAlignment="Center" Text="Output folder" />
           <TextBox Grid.Row="12" Grid.Column="2" Text="{Binding OutputDirectoryName}" />
           <CheckBox Grid.Row="14" Grid.Column="2" IsChecked="{Binding Clean}" Content="Delete the output folders first" />
+          <CheckBox Grid.Row="16" Grid.Column="2" IsChecked="{Binding Incremental}"
+                    Content="Only update what changed since the last generation (git)"
+                    ToolTip.Tip="Projects without changes are skipped and diagrams of unchanged code are kept. Without a git repository everything is generated." />
         </Grid>
       </rice:RiceGroupBox>
     </Grid>

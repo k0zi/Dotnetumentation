@@ -38,7 +38,14 @@ public sealed record SequenceModel(
     string TypeName,
     string MethodId,
     IReadOnlyList<SequenceParticipant> Participants,
-    IReadOnlyList<SequenceStep> Steps);
+    IReadOnlyList<SequenceStep> Steps)
+{
+    /// <summary>The source files the diagram depends on: the walked method bodies and the declarations of the called methods and participants.</summary>
+    public IReadOnlyList<string> SourceFiles { get; init; } = [];
+}
+
+/// <summary>A method with a sequence or activity diagram, as linked from the index and the reference pages.</summary>
+public sealed record MethodDiagram(string Namespace, string TypeName, string MethodId);
 
 public enum ParticipantKind
 {

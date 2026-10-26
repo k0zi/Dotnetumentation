@@ -12,7 +12,22 @@ public sealed record GeneratorContext(
     IReadOnlyList<ActivityModel> Activities,
     IReadOnlyList<SequenceModel> Sequences,
     IReadOnlyDictionary<string, TypeModel> SolutionTypes,
-    DiagramKinds Diagrams);
+    DiagramKinds Diagrams)
+{
+    /// <summary>
+    /// Every method with a sequence diagram, in source order: the analyzed ones (<see cref="Sequences"/>) and, in an
+    /// incremental update, those whose diagram is kept from the earlier run.
+    /// </summary>
+    public IReadOnlyList<MethodDiagram> SequenceLinks { get; init; } =
+        Sequences.Select(s => new MethodDiagram(s.Namespace, s.TypeName, s.MethodId)).ToList();
+
+    /// <summary>Every method with an activity diagram, like <see cref="SequenceLinks"/>.</summary>
+    public IReadOnlyList<MethodDiagram> ActivityLinks { get; init; } =
+        Activities.Select(a => new MethodDiagram(a.Namespace, a.TypeName, a.MethodId)).ToList();
+
+    /// <summary>The graph database of the project; null when it is not generated.</summary>
+    public Dotnetumentation.Core.Graph.CodeGraph? Graph { get; init; }
+}
 
 public interface IDiagramGenerator
 {
@@ -23,6 +38,19 @@ public interface IDiagramGenerator
 public static class DocumentationPaths
 {
     public const string Index = "README.md";
+    public const string Dependencies = "dependencies.md";
+    public const string Coverage = "documentation-coverage.md";
+    public const string Graph = "graph.md";
+
+    // Keep paths bounded while distinguishing generic arity, nested types and sanitized names.
+    public static string TypeReference(string id)
+    {
+        var name = PlantUmlWriter.FileName(id);
+        if (name.Length > 80) name = name[..80];
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(id)));
+        return $"api/{name}-{hash}.md";
+    }
+
     public const string Components = "component.puml";
     public const string Namespaces = "packages.puml";
 

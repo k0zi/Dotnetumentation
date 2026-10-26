@@ -46,6 +46,24 @@ public sealed record GeneratorOptions
     /// <summary>Deletes the output folder of a project before writing it, so diagrams of removed code disappear.</summary>
     public bool Clean { get; init; }
 
+    /// <summary>
+    /// Updates the documentation from the git changes since the last generation (or since <see cref="Since"/>) instead
+    /// of analyzing everything again: projects without changes are skipped, and diagrams whose source files did not
+    /// change are kept. Without a git repository or an earlier run the whole documentation is generated.
+    /// </summary>
+    public bool Incremental { get; init; }
+
+    /// <summary>The git commit or ref the incremental update compares the code with; null takes the commit of the last generation.</summary>
+    public string? Since { get; init; }
+
+    public bool IsIncremental => Incremental || Since is not null;
+
+    /// <summary>
+    /// Writes the graph database (<c>graph.db</c>, SQLite) of the classes, functions, relations and calls of each project,
+    /// and of the whole solution next to the solution file.
+    /// </summary>
+    public bool Graph { get; init; } = true;
+
     public const string DefaultOutputDirectoryName = "docs.net";
     public const int DefaultMaxSequenceMessages = 500;
 }

@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Dotnetumentation.Core;
+using Dotnetumentation.Core.Graph;
 using Dotnetumentation.Core.Model;
 
 namespace Dotnetumentation.Cli;
@@ -71,6 +72,19 @@ internal static class Program
         {
             Description = "Delete each output folder before writing it.",
         };
+        var incremental = new Option<bool>("--incremental", "-i")
+        {
+            Description = "Only update what changed (git) since the last generation: unchanged projects are skipped, "
+                          + "diagrams of unchanged code are kept. Without a git repository everything is generated.",
+        };
+        var since = new Option<string>("--since")
+        {
+            Description = "Incremental update compared with this git commit, branch or tag instead of the last generation.",
+        };
+        var noGraph = new Option<bool>("--no-graph")
+        {
+            Description = "Do not write the graph databases (graph.db) of the classes, functions and calls.",
+        };
         var verbose = new Option<bool>("--verbose")
         {
             Description = "Show every progress message and the load warnings.",
@@ -78,7 +92,7 @@ internal static class Program
 
         var generate = new Command("generate", "Generate the PlantUML documentation of every C# project of a solution.")
         {
-            input, diagrams, visibility, depth, maxMessages, include, exclude, outputName, clean, verbose,
+            input, diagrams, visibility, depth, maxMessages, include, exclude, outputName, clean, incremental, since, noGraph, verbose,
         };
         generate.SetAction((result, cancellationToken) => GenerateAsync(new GeneratorOptions
         {
@@ -91,9 +105,105 @@ internal static class Program
             Exclude = result.GetValue(exclude) ?? [],
             OutputDirectoryName = result.GetValue(outputName) ?? GeneratorOptions.DefaultOutputDirectoryName,
             Clean = result.GetValue(clean),
+            Incremental = result.GetValue(incremental),
+            Since = result.GetValue(since),
+            Graph = !result.GetValue(noGraph),
         }, result.GetValue(verbose), cancellationToken));
 
-        return new RootCommand("Dotnetumentation: static UML (PlantUML) documentation of .NET solutions.") { generate };
+        return new RootCommand("Dotnetumentation: static UML (PlantUML) documentation of .NET solutions.") { generate, BuildQueryCommand() };
+    }
+
+    private static Command BuildQueryCommand()
+    {
+        var path = new Argument<string>("path")
+        {
+            Description = "A graph database, a solution or project file, a documentation folder or a folder above them.",
+        };
+        var text = new Argument<string>("text")
+        {
+            Description = "Words of the name, full name or summary; a word matches the start of a word (\"order serv\").",
+        };
+        var kind = new Option<string[]>("--kind", "-k")
+        {
+            Description = "Only these node kinds: type, member, or a kind (class, interface, method, property, record-struct, …).",
+            AllowMultipleArgumentsPerToken = true,
+        };
+        var limit = new Option<int>("--limit", "-n")
+        {
+            Description = "Show at most this many matches.",
+            DefaultValueFactory = _ => 20,
+        };
+        var relations = new Option<bool>("--relations", "-r")
+        {
+            Description = "Show the relations (calls, called by, implements, …) and documents of every match; always shown for a single match.",
+        };
+        var outputName = new Option<string>("--output-dir-name")
+        {
+            Description = "Name of the documentation folders to look for graph databases in.",
+            DefaultValueFactory = _ => GeneratorOptions.DefaultOutputDirectoryName,
+        };
+
+        var query = new Command("query", "Search the classes and functions in the graph database of generated documentation.")
+        {
+            path, text, kind, limit, relations, outputName,
+        };
+        query.SetAction(result => Query(result.GetValue(path)!, result.GetValue(text)!,
+            (result.GetValue(kind) ?? []).SelectMany(k => k.Split(',', StringSplitOptions.RemoveEmptyEntries)).SelectMany(RelationNames.KindsOf).ToList(),
+            Math.Max(1, result.GetValue(limit)), result.GetValue(relations),
+            result.GetValue(outputName) ?? GeneratorOptions.DefaultOutputDirectoryName));
+        return query;
+    }
+
+    private static int Query(string path, string text, IReadOnlyList<string> kinds, int limit, bool relations, string outputDirectoryName)
+    {
+        var databases = GraphIndex.Locate(path, outputDirectoryName);
+        if (databases.Count == 0)
+        {
+            Console.Error.WriteLine($"No graph database found at {Path.GetFullPath(path)}: generate the documentation first.");
+            return LoadFailed;
+        }
+
+        using var index = GraphIndex.Open(databases);
+        var matches = index.Search(text, kinds, limit);
+        if (matches.Count == 0)
+        {
+            Console.WriteLine("No match.");
+            return Success;
+        }
+        var kindWidth = matches.Max(m => m.Kind.Length);
+        var nameWidth = Math.Min(80, matches.Max(m => m.FullName.Length));
+        foreach (var match in matches)
+        {
+            Console.WriteLine($"{match.Kind.PadRight(kindWidth)}  {match.FullName.PadRight(nameWidth)}  {Location(match)}".TrimEnd());
+            if (!relations && matches.Count > 1)
+                continue;
+            if (match.Summary is { } summary)
+                Console.WriteLine($"    {summary}");
+            foreach (var group in index.Relations(match.Id).Where(r => r.Edge.Kind != EdgeKinds.DeclaredIn)
+                         .GroupBy(RelationNames.Of).OrderBy(g => g.Key, StringComparer.Ordinal))
+            {
+                Console.WriteLine($"    {group.Key}:");
+                foreach (var relation in group.OrderBy(r => r.Other.FullName, StringComparer.Ordinal))
+                {
+                    var label = relation.Edge.Label.Length > 0 ? $" ({relation.Edge.Label})" : "";
+                    var origin = relation.Other.IsExternal ? "  [external]" : "";
+                    Console.WriteLine($"      {relation.Other.FullName}{label}{origin}");
+                }
+            }
+            foreach (var document in index.Documents(match.Id))
+                Console.WriteLine($"    {document.Kind}: {Display(document.Path)}");
+        }
+        return Success;
+    }
+
+    private static string Location(GraphNode node) =>
+        node.File is null ? node.IsExternal ? "[external]" : "" : $"{Display(node.File)}{(node.Line is { } line ? $":{line}" : "")}";
+
+    /// <summary>Paths below the current folder are shown relative to it.</summary>
+    private static string Display(string path)
+    {
+        var relative = Path.GetRelativePath(Environment.CurrentDirectory, path);
+        return relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative) ? path : relative;
     }
 
     private static DiagramKinds Fail(System.CommandLine.Parsing.ArgumentResult result, string value)
@@ -128,7 +238,12 @@ internal static class Program
         }
 
         foreach (var project in result.Projects)
-            Console.WriteLine($"{project.Name}: {project.Files.Count} files in {project.OutputDirectory}");
+            Console.WriteLine($"{project.Name}: {project.Files.Count} files in {project.OutputDirectory}" + project.Mode switch
+            {
+                GenerationMode.Skipped => " (up to date)",
+                GenerationMode.Incremental => " (updated)",
+                _ => "",
+            });
         if (result.Warnings.Count > 0)
         {
             Console.Error.WriteLine($"{result.Warnings.Count} warning(s){(verbose ? ":" : " (use --verbose to show them).")}");
@@ -136,6 +251,8 @@ internal static class Program
                 foreach (var warning in result.Warnings)
                     Console.Error.WriteLine("  " + warning);
         }
+        if (result.SolutionGraph is not null)
+            Console.WriteLine($"Graph database of the solution: {result.SolutionGraph}");
         Console.WriteLine($"Done in {result.Elapsed.TotalSeconds:0.0} s.");
         return result.Projects.Count == 0 ? LoadFailed : result.Warnings.Count > 0 ? CompletedWithWarnings : Success;
     }

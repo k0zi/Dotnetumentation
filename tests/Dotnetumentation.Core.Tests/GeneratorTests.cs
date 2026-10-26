@@ -64,10 +64,13 @@ public class GeneratorTests(SampleSolutionFixture sample) : IClassFixture<Sample
         Assert.Equal(["Sample.App", "Sample.Domain"], result.Projects.Select(p => p.Name));
         var app = Path.Combine(sample.Directory, "Sample.App", "docs.net");
         var domain = Path.Combine(sample.Directory, "Sample.Domain", "docs.net");
-        foreach (var file in (string[])["README.md", "component.puml", "packages.puml", "class/Sample.App.puml",
+        foreach (var file in (string[])["README.md", "dependencies.md", "documentation-coverage.md", "component.puml", "packages.puml", "class/Sample.App.puml",
                      "sequence/Sample.App.OrderService/Place_Order.puml", "activity/Sample.App.OrderService/Place_Order.puml"])
             Assert.True(File.Exists(Path.Combine(app, file)), file);
         Assert.True(File.Exists(Path.Combine(domain, "class", "Sample.Domain.puml")));
+        Assert.NotEmpty(Directory.GetFiles(Path.Combine(domain, "api"), "*.md"));
+        var dependencyDocs = await File.ReadAllTextAsync(Path.Combine(app, "dependencies.md"));
+        Assert.Contains("Sample.Domain", dependencyDocs);
 
         var component = await File.ReadAllTextAsync(Path.Combine(app, "component.puml"));
         Assert.Contains("project_Sample_App --> project_Sample_Domain", component);
@@ -120,6 +123,22 @@ public class GeneratorTests(SampleSolutionFixture sample) : IClassFixture<Sample
     {
         var options = new GeneratorOptions { InputPath = "x.slnx", Include = ["Sample.*"], Exclude = ["*.Domain"] };
         Assert.Equal(expected, DocumentationGenerator.Matches(project, options));
+    }
+
+    [Fact]
+    public async Task Without_git_an_incremental_update_generates_everything()
+    {
+        var result = await Run(new GeneratorOptions { InputPath = sample.SolutionPath, Incremental = true });
+
+        Assert.All(result.Projects, p => Assert.Equal(GenerationMode.Full, p.Mode));
+        Assert.Contains(result.Warnings, w => w.Contains("not in a git repository"));
+    }
+
+    [Fact]
+    public async Task An_incremental_update_cannot_clean()
+    {
+        var options = new GeneratorOptions { InputPath = sample.SolutionPath, Incremental = true, Clean = true };
+        await Assert.ThrowsAsync<ArgumentException>(() => Run(options));
     }
 
     [Fact]

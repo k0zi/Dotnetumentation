@@ -18,6 +18,7 @@ public sealed partial class GenerateViewModel : ObservableObject
     [ObservableProperty] private bool _componentDiagrams;
     [ObservableProperty] private bool _sequenceDiagrams;
     [ObservableProperty] private bool _activityDiagrams;
+    [ObservableProperty] private bool _graph;
     [ObservableProperty] private Visibility _minVisibility;
     [ObservableProperty] private bool _followAllCalls;
     [ObservableProperty] private decimal _sequenceDepth;
@@ -26,6 +27,7 @@ public sealed partial class GenerateViewModel : ObservableObject
     [ObservableProperty] private string _exclude;
     [ObservableProperty] private string _outputDirectoryName;
     [ObservableProperty] private bool _clean;
+    [ObservableProperty] private bool _incremental;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
@@ -43,6 +45,7 @@ public sealed partial class GenerateViewModel : ObservableObject
         _componentDiagrams = settings.Diagrams.HasFlag(DiagramKinds.Component);
         _sequenceDiagrams = settings.Diagrams.HasFlag(DiagramKinds.Sequence);
         _activityDiagrams = settings.Diagrams.HasFlag(DiagramKinds.Activity);
+        _graph = settings.Graph;
         _minVisibility = settings.MinVisibility;
         _followAllCalls = settings.SequenceDepth is null;
         _sequenceDepth = settings.SequenceDepth ?? 3;
@@ -50,6 +53,20 @@ public sealed partial class GenerateViewModel : ObservableObject
         _include = settings.Include;
         _exclude = settings.Exclude;
         _outputDirectoryName = settings.OutputDirectoryName;
+        _incremental = settings.Incremental;
+    }
+
+    // An incremental update keeps the earlier files, deleting them first would defeat it.
+    partial void OnCleanChanged(bool value)
+    {
+        if (value)
+            Incremental = false;
+    }
+
+    partial void OnIncrementalChanged(bool value)
+    {
+        if (value)
+            Clean = false;
     }
 
     public IReadOnlyList<Visibility> Visibilities { get; } = Enum.GetValues<Visibility>().Reverse().ToList();
@@ -90,7 +107,8 @@ public sealed partial class GenerateViewModel : ObservableObject
             foreach (var warning in result.Warnings)
                 Log.Add("⚠ " + warning);
             var files = result.Projects.Sum(p => p.Files.Count);
-            Status = $"{result.Projects.Count} project(s), {files} files in {result.Elapsed.TotalSeconds:0.0} s"
+            var skipped = result.Projects.Count(p => p.Mode == GenerationMode.Skipped);
+            Status = $"{result.Projects.Count} project(s){(skipped > 0 ? $" ({skipped} up to date)" : "")}, {files} files in {result.Elapsed.TotalSeconds:0.0} s"
                      + (result.Warnings.Count > 0 ? $", {result.Warnings.Count} warning(s)." : ".");
             if (result.Projects.Count > 0)
                 Generated?.Invoke(this, options.InputPath);
@@ -136,6 +154,8 @@ public sealed partial class GenerateViewModel : ObservableObject
                 ? GeneratorOptions.DefaultOutputDirectoryName
                 : OutputDirectoryName.Trim(),
             Clean = Clean,
+            Incremental = Incremental,
+            Graph = Graph,
         };
     }
 
@@ -149,6 +169,8 @@ public sealed partial class GenerateViewModel : ObservableObject
         _settings.Include = Include;
         _settings.Exclude = Exclude;
         _settings.OutputDirectoryName = options.OutputDirectoryName;
+        _settings.Incremental = options.Incremental;
+        _settings.Graph = options.Graph;
         _settings.Save();
     }
 

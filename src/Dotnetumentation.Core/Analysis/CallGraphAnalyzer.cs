@@ -22,6 +22,7 @@ internal sealed class CallGraphAnalyzer(Func<SyntaxTree, SemanticModel?> semanti
     private readonly Dictionary<string, SequenceParticipant> _participants = [];
     private readonly HashSet<string> _participantIds = [];
     private readonly HashSet<IMethodSymbol> _expanded = new(SymbolEqualityComparer.Default);
+    private readonly HashSet<string> _sources = new(StringComparer.Ordinal);
     private int _messages;
     private int _ownCalls;
     private CancellationToken _cancellationToken;
@@ -32,12 +33,14 @@ internal sealed class CallGraphAnalyzer(Func<SyntaxTree, SemanticModel?> semanti
         _participants.Clear();
         _participantIds.Clear();
         _expanded.Clear();
+        _sources.Clear();
         _messages = 0;
         _ownCalls = 0;
         _cancellationToken = cancellationToken;
 
         var self = Participant(method.ContainingType);
         _expanded.Add(method.OriginalDefinition);
+        AddSources(method.OriginalDefinition);
         var body = Walk(method, self, 0);
         if (_ownCalls == 0)
             return null;
@@ -50,7 +53,18 @@ internal sealed class CallGraphAnalyzer(Func<SyntaxTree, SemanticModel?> semanti
             steps.Add(new SequenceMessage(self.Id, "", Symbols.ShortName(method.ReturnType), IsReturn: true));
 
         return new SequenceModel(Symbols.NamespaceName(method.ContainingType), method.ContainingType.ToDisplayString(Symbols.TypeNameFormat),
-            TypeAnalyzer.MethodId(method), _participants.Values.ToList(), steps);
+            TypeAnalyzer.MethodId(method), _participants.Values.ToList(), steps)
+        {
+            SourceFiles = _sources.Order(StringComparer.Ordinal).ToList(),
+        };
+    }
+
+    /// <summary>Records the files declaring a symbol: the diagram has to be made again when one of them changes.</summary>
+    private void AddSources(ISymbol symbol)
+    {
+        foreach (var location in symbol.Locations)
+            if (location.IsInSource && location.SourceTree?.FilePath is { Length: > 0 } path)
+                _sources.Add(path);
     }
 
     private static bool ContainsMessage(SequenceStep step) => step switch
@@ -82,7 +96,10 @@ internal sealed class CallGraphAnalyzer(Func<SyntaxTree, SemanticModel?> semanti
                 _ => null,
             };
             if (body is not null)
+            {
+                _sources.Add(syntax.SyntaxTree.FilePath);
                 return (body, semanticModels(syntax.SyntaxTree));
+            }
         }
         return (null, null);
     }
@@ -236,6 +253,8 @@ internal sealed class CallGraphAnalyzer(Func<SyntaxTree, SemanticModel?> semanti
             return;
 
         var target = Participant(method.ContainingType, isExternal);
+        if (!isExternal)
+            AddSources(method.OriginalDefinition);
         var args = arguments is null ? "" : string.Join(", ", arguments.Arguments.Select(a => PlantUmlWriter.Truncate(Label(a), MaxArgumentLength)));
         var isAsync = call.Ancestors().TakeWhile(a => a is not StatementSyntax and not AnonymousFunctionExpressionSyntax)
             .Any(a => a is AwaitExpressionSyntax);
@@ -256,6 +275,7 @@ internal sealed class CallGraphAnalyzer(Func<SyntaxTree, SemanticModel?> semanti
     private SequenceParticipant Participant(INamedTypeSymbol type, bool isExternal = false)
     {
         type = type.OriginalDefinition;
+        AddSources(type);
         var key = Symbols.TypeId(type);
         if (_participants.TryGetValue(key, out var participant))
             return participant;
