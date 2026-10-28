@@ -64,10 +64,16 @@ public class GraphTests(SampleSolutionFixture sample) : IClassFixture<SampleSolu
         Assert.Contains(place, r => r.Edge.Kind == EdgeKinds.Calls && r.Other.Id == "M:Sample.Domain.IRepository`1.Add(`0)" && r.Other is { IsStub: true, IsExternal: false });
         Assert.Contains(place, r => r.Edge.Kind == EdgeKinds.Calls && r.Other.Id == "M:Sample.App.OrderService.Validate(Sample.Domain.OrderLine)");
         Assert.Contains(place, r => r.Edge.Kind == EdgeKinds.Creates && r.Other.Id == "M:System.ArgumentException.#ctor(System.String)" && r.Other.IsExternal);
-        // Who uses a library: the incoming edges of the external node. Log is private, below the visibility filter.
+        // Who uses a library: the incoming edges of the external node.
         Assert.Contains(graph.Relations("M:System.ArgumentException.#ctor(System.String)"),
             r => !r.IsOutgoing && r.Edge.Kind == EdgeKinds.Creates && r.Other.Id == Place);
-        Assert.Null(graph.Node("M:System.Console.WriteLine(System.String)"));
+        // Private members are below the visibility filter of the documentation, but in the graph, with their calls.
+        var log = graph.Node("M:Sample.App.OrderService.Log(System.String)")!;
+        Assert.Equal("private", log.Visibility);
+        Assert.False(log.IsStub);
+        Assert.Empty(graph.Documents(log.Id));
+        Assert.Contains(graph.Relations("M:System.Console.WriteLine(System.String)"),
+            r => !r.IsOutgoing && r.Edge.Kind == EdgeKinds.Calls && r.Other.Id == log.Id);
         // The primary constructor is declared by the whole class, but the calls of the methods are not its own.
         Assert.DoesNotContain(graph.Relations("M:Sample.App.OrderService.#ctor(Sample.Domain.IRepository{Sample.Domain.Order})"),
             r => r.IsOutgoing && r.Edge.Kind is EdgeKinds.Calls or EdgeKinds.Creates);

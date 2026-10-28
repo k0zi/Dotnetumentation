@@ -53,7 +53,8 @@ public sealed class GraphDocumentationGenerator : IDiagramGenerator
         md.Append($"`<Solution>{GraphDatabase.SolutionFileSuffix}` next to the solution file holds the graphs of every project in one database.\n\n");
         md.Append("Open it with any SQLite tool (`sqlite3`, DB Browser for SQLite, a library of your language), search it in the *Symbols* tab of the ");
         md.Append("Dotnetumentation app, or with `dotnetumentation query <folder> <text>`.\n\n");
-        md.Append("Nodes follow the visibility filter of the documentation; calls are read from the members that are documented. ");
+        md.Append("The graph has every type and member of the project, private ones included, whatever the visibility filter of the documentation; ");
+        md.Append("only nodes with a reference page have an `api` document. Filter by the `visibility` column to see what is public. ");
         md.Append("Calls are resolved by the compiler, so a call through an interface leads to the interface member: follow `implements_member` to the implementations.\n\n");
 
         md.Append("## Contents\n\n| Node kind | Defined here | Referenced only (stubs) |\n|---|---:|---:|\n");

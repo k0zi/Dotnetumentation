@@ -159,11 +159,17 @@ public sealed class DocumentationGenerator
                 ActivityLinks = methods.ActivityStates.Select(Link).ToList(),
             };
             if (options.Graph)
+            {
+                // The graph has every type and member; the documentation only those above the visibility filter.
+                var documentsEverything = options.MinVisibility == Visibility.Private;
+                var everything = documentsEverything ? analysis.Analyzer : new TypeAnalyzer(analysis.Compilation, Visibility.Private);
+                var types = documentsEverything ? analysis.Model.Types : everything.Analyze(ct);
                 context = context with
                 {
-                    Graph = new GraphAnalyzer(analysis.Compilation, analysis.Analyzer, projectByAssembly, outputDirectory, solutionDirectory)
-                        .Build(context, ct),
+                    Graph = new GraphAnalyzer(analysis.Compilation, everything, projectByAssembly, outputDirectory, solutionDirectory)
+                        .Build(context, types, ct),
                 };
+            }
             var files = GeneratorsFor(options.Diagrams).SelectMany(g => g.Generate(context)).ToList();
             var result = WriteGraph(OutputWriter.Write(analysis.Model.Name, outputDirectory, files, options.Clean, methods.Kept, plan.Mode),
                 context.Graph);

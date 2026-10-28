@@ -9,9 +9,11 @@ using TypeKind = Dotnetumentation.Core.Model.TypeKind;
 namespace Dotnetumentation.Core.Graph;
 
 /// <summary>
-/// Builds the graph database of one project: its namespaces, files, types and members (the documented ones, after the
-/// visibility filter), their relations, the direct calls of the members and the documentation pages of each node.
+/// Builds the graph database of one project: its namespaces, files, types and members, their relations, the direct calls
+/// of the members and the documentation pages of each node. The graph has every type and member, whatever the visibility
+/// filter of the documentation: only the links to documentation pages follow it.
 /// </summary>
+/// <param name="analyzer">Reads every type and member of the project (<see cref="Visibility.Private"/>).</param>
 /// <param name="databaseDirectory">The folder of the database: the stored paths are relative to it.</param>
 /// <param name="solutionDirectory">File ids (<c>file:</c>) are relative to it, so they are the same in every graph of the solution.</param>
 internal sealed class GraphAnalyzer(Compilation compilation, TypeAnalyzer analyzer, IReadOnlyDictionary<string, string> projectByAssembly,
@@ -28,7 +30,8 @@ internal sealed class GraphAnalyzer(Compilation compilation, TypeAnalyzer analyz
     public static string NamespaceId(string ns) => "N:" + DocumentationPaths.NamespaceTitle(ns);
     public static string TypeId(string typeId) => "T:" + typeId.Replace('+', '.');
 
-    public CodeGraph Build(GeneratorContext context, CancellationToken cancellationToken)
+    /// <param name="types">Every type of the project with every member; <c>context.Project</c> has the documented ones.</param>
+    public CodeGraph Build(GeneratorContext context, IReadOnlyList<TypeModel> types, CancellationToken cancellationToken)
     {
         var project = context.Project;
         var projectId = ProjectId(project.Name);
@@ -51,7 +54,7 @@ internal sealed class GraphAnalyzer(Compilation compilation, TypeAnalyzer analyz
             });
             Edge(projectId, PackageId(package.Name), EdgeKinds.PackageReference, package.Version ?? "");
         }
-        foreach (var ns in project.Namespaces)
+        foreach (var ns in types.Select(t => t.Namespace).Distinct().Order(StringComparer.Ordinal))
         {
             Add(new GraphNode
             {
@@ -80,10 +83,12 @@ internal sealed class GraphAnalyzer(Compilation compilation, TypeAnalyzer analyz
                     symbols.TryAdd(memberId, member);
         }
 
+        var allTypes = types.Select(t => t.Id).ToHashSet(StringComparer.Ordinal);
         var documentedTypes = project.Types.Select(t => t.Id).ToHashSet(StringComparer.Ordinal);
+        var documentedMembers = project.Types.SelectMany(t => t.Members).Select(m => m.SymbolId).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var sequences = context.SequenceLinks.ToHashSet();
         var activities = context.ActivityLinks.ToHashSet();
-        foreach (var type in project.Types)
+        foreach (var type in types)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var id = type.SymbolId ?? TypeId(type.Id);
@@ -96,14 +101,16 @@ internal sealed class GraphAnalyzer(Compilation compilation, TypeAnalyzer analyz
                 Declaration = type.Declaration, Summary = type.Documentation.Summary ?? type.Summary,
                 File = location?.File, Line = location?.Line,
             });
-            // A nested type belongs to its documented outer type, any other type to its namespace.
-            var outer = symbol?.ContainingType is { } containing && documentedTypes.Contains(Symbols.TypeId(containing))
+            // A nested type belongs to its outer type, any other type to its namespace.
+            var outer = symbol?.ContainingType is { } containing && allTypes.Contains(Symbols.TypeId(containing))
                 ? containing.GetDocumentationCommentId()
                 : null;
             Edge(outer ?? NamespaceId(type.Namespace), id, EdgeKinds.Contains);
             DeclaredIn(id, symbol, project.Name);
-            Document(id, DocumentKinds.Api, DocumentationPaths.TypeReference(type.Id));
-            if (context.Diagrams.HasFlag(DiagramKinds.Class))
+            var documented = documentedTypes.Contains(type.Id);
+            if (documented)
+                Document(id, DocumentKinds.Api, DocumentationPaths.TypeReference(type.Id));
+            if (documented && context.Diagrams.HasFlag(DiagramKinds.Class))
                 Document(id, DocumentKinds.Class, DocumentationPaths.ClassDiagram(type.Namespace));
 
             foreach (var relation in type.Relations)
@@ -137,7 +144,8 @@ internal sealed class GraphAnalyzer(Compilation compilation, TypeAnalyzer analyz
                 });
                 Edge(id, memberId, EdgeKinds.Contains);
                 DeclaredIn(memberId, memberSymbol, project.Name);
-                Document(memberId, DocumentKinds.Api, DocumentationPaths.TypeReference(type.Id));
+                if (documented && documentedMembers.Contains(memberId))
+                    Document(memberId, DocumentKinds.Api, DocumentationPaths.TypeReference(type.Id));
                 if (member.Id is { } methodId)
                 {
                     var method = new MethodDiagram(type.Namespace, type.Name, methodId);

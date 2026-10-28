@@ -117,7 +117,8 @@ queries. Open it with any SQLite tool, the *Symbols* tab of the GUI or `query`.
 - Ids are C# documentation comment ids (`T:Ns.Type`1`, `M:Ns.Type.Place(Ns.Order)`, `P:`, `F:`, `E:`), plus `N:<namespace>`,
   `project:<name>`, `package:<name>` and `file:<path relative to the solution folder>`: the same in every database.
 - Paths are relative to the folder of the database file, so the documentation can be moved or committed as a whole.
-- Nodes follow the visibility filter; calls are read from the documented members (lambdas included) and resolved by the
+- The graph has every type and member, private ones included, whatever `--visibility` is: only the `api` documents
+  follow the filter (filter by the `visibility` column instead). Calls are read from every member (lambdas included) and resolved by the
   compiler: a call through an interface leads to the interface member, `implements_member` to its implementations.
   Called .NET and package methods are stub nodes, so the callers of a library method can be found too.
 - The same code always gives the same bytes; the file is only replaced when its content changes. With `--incremental`
